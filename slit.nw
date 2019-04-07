@@ -1,0 +1,87 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{noweb}
+\pagestyle{noweb}
+
+\author{%
+Joel Fridolin Meyer\\
+\texttt{joel@sirjofri.de}
+}
+\title{\texttt{slit}~--~a suckless literate programming tool}
+\date{Version~\texttt{§GITVER§}}
+
+\begin{document}
+@
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\textbf{This is a self-contained literate programming document in \texttt{noweb} style. You can extract the \texttt{Makefile} part with \texttt{notangle} and use the \texttt{make} recipes or use \texttt{noweave} to build the document manually.}
+
+\newpage
+\section{Implementation}
+
+\subsection{Compilation and Installation}
+
+\subsubsection{The \texttt{noweb} compatible Makefile}
+
+We want to have a complete document with the compilation process inclusive. So we want to have the \texttt{Makefile} inside our literate program. You can tangle the \texttt{Makefile} with \texttt{notangle -t8 -RMakefile slit.nw > Makefile}, and then you can update it with \texttt{make Makefile}.
+
+First, we define our source files. This way we can combine the tangle process to one \texttt{Makefile} rule.
+
+<<Makefile>>=
+sources = 
+
+@
+
+The next step is weaving our documentation. This is a simple process, but we substitute the string \textbf{§{}GITVER{}§} with the correct git version.
+
+\textbf{Please note: In the following \texttt{Makefile} the [[GITVER]] variables are changed by the building process. You need to view the sourcefile \texttt{slit.nw} to see these parts correctly!}
+
+<<Makefile>>=
+slit.tex: slit.nw
+	noweave -index -delay $< | \
+	sed -e 's/§GITVER§/$(shell git describe --always --tags)/g' > $@
+
+slit.pdf: slit.tex
+	pdflatex $< && \
+	pdflatex $<
+
+@
+
+Then we tangle all our source files. Here we use the same trick as before.
+
+<<Makefile>>=
+$(sources): slit.nw
+	notangle -t8 -R$@ $< | \
+	sed -e 's/$$GITVER$$/$(shell git describe --always --tags)' > $@
+
+@
+
+We use a simple hack to tangle the \texttt{Makefile}: Our actual \texttt{Makefile} recipe calls another make process to extract the Makefile content to the file \texttt{Makefile.new}, then it renames it to its ``real'' filename.
+
+<<Makefile>>=
+Makefile.new: slit.nw
+	notangle -t8 -R$(basename $@) $< > $@
+
+Makefile: slit.nw
+	$(MAKE) Makefile.new && \
+	mv Makefile.new Makefile
+@
+
+\subsection{Index}
+\subsubsection{Chunks}
+\nowebchunks
+\subsubsection{Identifiers}
+\nowebindex
+\end{document}
