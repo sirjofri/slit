@@ -43,8 +43,24 @@ Joel Fridolin Meyer\\
 
 \textbf{This is a self-contained literate programming document in \texttt{noweb} style. You can extract the \texttt{Makefile} part with \texttt{notangle} and use the \texttt{make} recipes or use \texttt{noweave} to build the document manually.}
 
+\section{\texttt{slit}}
+
+\subsection{The \texttt{slit} command}
+
+The \texttt{slit} command is equivalent to various \texttt{tangle} tools in other WEB-like literate programming tools. It receives the input file via \texttt{stdin} and outputs the specified code to \texttt{stdout}. The user is responsible for redirecting the output to files.
+
+\texttt{slit} is a simple tool: We need only one parameter, the name of the initial code chunk we want to tangle. All other chunks are included. Additionally we can set the source code format to a supported language with \texttt{-l <language>}. This will affect the line numbers and maybe other features.
+
+\subsection{The \texttt{slit} file}
+
+The \texttt{slit} file is a standard markdown file. Parsing it with various markdown tools should give you a good result, weaving is not neccessarily needed!
+
 \newpage
 \section{Implementation}
+
+\subsection{The \texttt{slit} program}
+
+
 
 \subsection{Compilation and Installation}
 
