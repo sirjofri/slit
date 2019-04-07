@@ -1,3 +1,18 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% slit.nw: suckless literate programming tool
+%
+% Author: Joel Fridolin Meyer <joel@sirjofri.de>
+%
+% Copyright (C) 2019. All rights reserved.
+%
+% This is a literate program in noweb style. You can get a Makefile
+% with the following command:
+%
+%    notangle -t8 -RMakefile slit.nw > Makefile
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \documentclass{article}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -44,9 +59,7 @@ sources =
 
 @
 
-The next step is weaving our documentation. This is a simple process, but we substitute the string \textbf{§{}GITVER{}§} with the correct git version.
-
-\textbf{Please note: In the following \texttt{Makefile} the [[GITVER]] variables are changed by the building process. You need to view the sourcefile \texttt{slit.nw} to see these parts correctly!}
+The next step is weaving our documentation. This is a simple process, but we substitute the string \textbf{§{}GITVER{}§} with the correct git version. For the \texttt{Makefile} itself we decided to surround the \texttt{G} with brackets to prevent replacing it, too.
 
 <<Makefile>>=
 doc: slit.pdf
@@ -57,8 +70,8 @@ slit.pdf: slit.tex
 
 slit.tex: slit.nw
 	noweave -index -delay $< | \
-	sed -e 's/§GITVER§/$(shell git describe --always --tags)/g' \
-	> $@
+	sed -e \
+	's/§[G]ITVER§/$(shell git describe --always --tags)/g' > $@
 
 @
 
@@ -67,20 +80,19 @@ Then we tangle all our source files. Here we use the same trick as before.
 <<Makefile>>=
 $(sources): slit.nw
 	notangle -t8 -R$@ $< | \
-	sed -e 's/$$GITVER$$/$(shell git describe --always --tags)' \
-	> $@
+	sed -e \
+	's/$$GITVER$$/$(shell git describe --always --tags)' > $@
 
 @
 
-We use a simple hack to tangle the \texttt{Makefile}: Our actual \texttt{Makefile} recipe calls another make process to extract the Makefile content to the file \texttt{Makefile.new}, then it renames it to its ``real'' filename.
+We use a simple hack to tangle the \texttt{Makefile}: Our actual \texttt{Makefile} recipe calls another make process to extract the Makefile content to the file \texttt{Makefile.new}, then the user can rename it to its ``real'' filename.
 
 <<Makefile>>=
 Makefile.new: slit.nw
 	notangle -t8 -R$(basename $@) $< > $@
 
-Makefile: slit.nw
-	$(MAKE) Makefile.new && \
-	mv Makefile.new Makefile
+Makefile: Makefile.new
+	@echo "Makefile tangled. Use \`mv $@ $(basename $@)\`"
 @
 
 \subsection{Index}
