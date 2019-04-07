@@ -3,12 +3,10 @@
 % slit.nw: suckless literate programming tool
 %
 % Author: Joel Fridolin Meyer <joel@sirjofri.de>
-%
 % Copyright (C) 2019. All rights reserved.
 %
 % This is a literate program in noweb style. You can get a Makefile
 % with the following command:
-%
 %    notangle -t8 -RMakefile slit.nw > Makefile
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,7 +58,143 @@ The \texttt{slit} file is a standard markdown file. Parsing it with various mark
 
 \subsection{The \texttt{slit} program}
 
+<<slit.c>>=
+<<Includes>>
 
+<<Global variables>>
+
+<<Meta functions>>
+
+<<Main>>
+@
+
+<<Includes>>=
+#include <stdio.h>
+#include <stdlib.h>
+@
+
+\subsubsection{The Main function}
+
+The basic structure of our main program is like this:
+
+<<Main>>=
+int
+main(int argc, char **argv)
+{
+	<<Sort out parameters>>
+
+	return 0;
+}
+@
+
+We first try to find our parameters. We basically need three parameters:
+One chunk and the optional language parameter.
+We use our macros from our \texttt{arg.h} file (section \ref{arg}).
+The third optional parameter \texttt{d} adjusts the maximum depth for our recursion.
+
+<<Global variables>>=
+enum lang {
+	lang_c = 'c',
+};
+
+enum lang language;
+
+char *chunkname;
+int max_depth = 10;
+@ %def lang language chunkname max_depth
+
+<<Sort out parameters>>=
+ARGBEGIN {
+case 'l':
+	language = *EARGF(usage());
+	break;
+case 'd':
+	max_depth = atoi(EARGF(usage()));
+	break;
+} ARGEND;
+
+if (!argc)
+	usage();
+
+chunkname = argv[0];
+
+printf("language param: %c\n", language);
+printf("Chunk: %s\n", chunkname);
+printf("Max_Depth: %d\n", max_depth);
+@
+
+In our next step we open two temp files. One file is our chunk library, the other our target file.
+We read all chunks from our input stream into the chunk library, with chunk information like line numbers and chunk name.
+
+In the next step we read this chunk library temp file and search for the chunk that the user requested.
+We then read this chunk recursively into the target temp file.
+
+Our recursive function looks something like: \texttt{int read\_in\_chunk(char *chunkname, int depth)}.
+It returns $1$ if the chunk is found, $0$ or less if the chunk is not found or the maximum depth is reached.
+We need to decrement the \texttt{depth} variable on each iteration.
+
+The function itself appends the found chunk data into the temporary target file. It might be neccessary to add something for the indentation, but let's look into this another time.
+
+\subsubsection{Meta functions}
+
+These are functions \emph{about} the program. Most important is the [[usage()]] function:
+
+<<Meta functions>>=
+char *argv0;
+
+void
+usage()
+{
+	fprintf(stderr,
+	        "Usage: %s [-l <language>] [-d <max_depth>] <chunk>\n"
+	        "   -l makes use of language specific features.\n"
+	        "   -d sets the maximum recursion depth.\n",
+	        argv0
+	);
+	exit(1);
+}
+@ %def argv0 usage
+
+\subsubsection{The \texttt{arg.h} file} \label{arg}
+
+The \texttt{arg.h} file is basically a copy from another suckless program.
+
+<<Includes>>=
+#include "arg.h"
+@
+
+<<arg.h>>=
+#define ARGBEGIN \
+	for (argv0 = *argv, argv++, argc--; \
+	     argv[0] && argv[0][1] \
+	     && argv[0][0] == '-'; \
+	     argc--, argv++) { \
+		char argc_; \
+		char **argv_; \
+		int brk_; \
+		if (argv[0][1] == '-' && argv[0][2] == '\0') { \
+			argv++; \
+			argc--; \
+			break; \
+		} \
+		for (brk_ = 0, argv[0]++, argv_ = argv; \
+		     argv[0][0] && !brk_; \
+		     argv[0]++) { \
+			if (argv_ != argv) \
+				break; \
+			argc_ = argv[0][0]; \
+			switch (argc_)
+
+#define ARGEND \
+	} }
+
+#define EARGF(x) \
+	((argv[0][1] == '\0' && argv[1] == NULL) ? \
+	((x), abort(), (char *)0) : \
+	(brk_ = 1, (argv[0][1] != '\0') ? \
+		(&argv[0][1]) : \
+		(argc--, argv++, argv[0])))
+@ %def ARGBEGIN ARGEND EARGF
 
 \subsection{Compilation and Installation}
 
@@ -71,7 +205,10 @@ We want to have a complete document with the compilation process inclusive. So w
 First, we define our source files. This way we can combine the tangle process to one \texttt{Makefile} rule.
 
 <<Makefile>>=
-sources = 
+sources = slit.c arg.h
+
+slit: $(sources)
+	@cc -std=c99 -pedantic -Wall -o $@ $<
 
 @
 
@@ -95,9 +232,10 @@ Then we tangle all our source files. Here we use the same trick as before.
 
 <<Makefile>>=
 $(sources): slit.nw
-	notangle -t8 -R$@ $< | \
+	@notangle -t8 -R$@ -L $< | \
 	sed -e \
-	's/$$GITVER$$/$(shell git describe --always --tags)' > $@
+	's/$$GITVER$$/$(shell git describe --always --tags)/g' | \
+	cpif $@
 
 @
 
@@ -105,10 +243,23 @@ We use a simple hack to tangle the \texttt{Makefile}: Our actual \texttt{Makefil
 
 <<Makefile>>=
 Makefile.new: slit.nw
-	notangle -t8 -R$(basename $@) $< > $@
-
-Makefile: Makefile.new
+	@notangle -t8 -R$(basename $@) $< > $@
 	@echo "Makefile tangled. Use \`mv $@ $(basename $@)\`"
+
+#Makefile: Makefile.new
+#	@mv $< $@
+
+clean:
+	-@rm \
+	arg.h slit slit.aux slit.c slit.log \
+	slit.out slit.tex slit.toc Makefile.new
+
+cleanall: clean
+	-@rm \
+	slit.pdf Makefile
+
+
+.PHONY: clean cleanall doc
 @
 
 \subsection{Index}
