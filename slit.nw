@@ -49,13 +49,16 @@ The next step is weaving our documentation. This is a simple process, but we sub
 \textbf{Please note: In the following \texttt{Makefile} the [[GITVER]] variables are changed by the building process. You need to view the sourcefile \texttt{slit.nw} to see these parts correctly!}
 
 <<Makefile>>=
-slit.tex: slit.nw
-	noweave -index -delay $< | \
-	sed -e 's/§GITVER§/$(shell git describe --always --tags)/g' > $@
+doc: slit.pdf
 
 slit.pdf: slit.tex
 	pdflatex $< && \
 	pdflatex $<
+
+slit.tex: slit.nw
+	noweave -index -delay $< | \
+	sed -e 's/§GITVER§/$(shell git describe --always --tags)/g' \
+	> $@
 
 @
 
@@ -64,7 +67,8 @@ Then we tangle all our source files. Here we use the same trick as before.
 <<Makefile>>=
 $(sources): slit.nw
 	notangle -t8 -R$@ $< | \
-	sed -e 's/$$GITVER$$/$(shell git describe --always --tags)' > $@
+	sed -e 's/$$GITVER$$/$(shell git describe --always --tags)' \
+	> $@
 
 @
 
